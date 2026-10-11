@@ -1,5 +1,6 @@
 use std::fmt::Write as _;
 use std::io::{self, BufWriter, Write};
+use std::process::Command;
 
 use anyhow::Result;
 use serde::ser::SerializeSeq;
@@ -11,6 +12,8 @@ use ruff_linter::codes::{Category, RuleStatus};
 use ruff_linter::registry::{Linter, Rule, RuleNamespace};
 
 use crate::args::HelpFormat;
+
+const RULE_DOCS_URL: &str = "https://docs.astral.sh/ruff/rules/";
 
 #[derive(Serialize)]
 struct Explanation<'a> {
@@ -107,7 +110,11 @@ fn format_rule_text(rule: Rule) -> String {
 }
 
 /// Explain a `Rule` to the user.
-pub(crate) fn rule(rule: Rule, format: HelpFormat) -> Result<()> {
+pub(crate) fn rule(rule: Rule, format: HelpFormat, open: bool) -> Result<()> {
+    if open {
+        open_url(&rule_url(&rule))?;
+    }
+
     let mut stdout = BufWriter::new(io::stdout().lock());
     match format {
         HelpFormat::Text => {
@@ -118,6 +125,34 @@ pub(crate) fn rule(rule: Rule, format: HelpFormat) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn rule_url(rule: &Rule) -> String {
+    format!("{RULE_DOCS_URL}{}", rule.name().as_str())
+}
+
+fn open_url(url: &str) -> Result<()> {
+    #[cfg(target_os = "windows")]
+    let status = Command::new("cmd")
+        .args(["/C", "start", "", url])
+        .status()?;
+
+    #[cfg(target_os = "macos")]
+    let status = Command::new("open").arg(url).status()?;
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let status = Command::new("xdg-open").arg(url).status()?;
+
+    #[cfg(not(any(target_os = "windows", unix)))]
+    return Err(anyhow::anyhow!(
+        "opening URLs is not supported on this operating system"
+    ));
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!("failed to open rule documentation: {url}"))
+    }
 }
 
 /// Explain all rules to the user.
@@ -140,6 +175,23 @@ pub(crate) fn rules(format: HelpFormat) -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{rule_url, Rule};
+
+    #[test]
+    fn rule_url_uses_the_canonical_rule_slug() -> anyhow::Result<()> {
+        let rule = Rule::from_code("B904")?;
+
+        assert_eq!(
+            rule_url(&rule),
+            "https://docs.astral.sh/ruff/rules/raise-without-from-inside-except"
+        );
+
+        Ok(())
+    }
 }
 
 /// The location of the rule's implementation in the Ruff source tree, relative to the repository

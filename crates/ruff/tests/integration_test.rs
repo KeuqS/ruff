@@ -1047,6 +1047,23 @@ fn rule_f401_output_text() {
 }
 
 #[test]
+fn rule_open_requires_a_rule() {
+    assert_cmd_snapshot!(ruff_cmd().args(["rule", "--open"]), @"
+    success: false
+    exit_code: 2
+    ----- stdout -----
+
+    ----- stderr -----
+    error: the following required arguments were not provided:
+      <RULE>
+
+    Usage: ruff rule <RULE>
+
+    For more information, try '--help'.
+    ");
+}
+
+#[test]
 fn rule_invalid_rule_name() {
     assert_cmd_snapshot!(ruff_cmd().args(["rule", "unused-imports"]), @"
     success: false

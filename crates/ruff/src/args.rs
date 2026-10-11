@@ -144,6 +144,10 @@ pub enum Command {
         #[arg(long, conflicts_with = "rule", group = "selector")]
         all: bool,
 
+        /// Open the rule's online documentation in a browser
+        #[arg(long, requires = "rule", conflicts_with = "all")]
+        open: bool,
+
         /// Output format
         #[arg(long, value_enum, default_value = "text")]
         output_format: HelpFormat,

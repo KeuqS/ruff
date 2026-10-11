@@ -175,13 +175,14 @@ pub fn run(
         Command::Rule {
             rule,
             all,
+            open,
             output_format,
         } => {
             if all {
                 commands::rule::rules(output_format)?;
             }
             if let Some(rule) = rule {
-                commands::rule::rule(rule, output_format)?;
+                commands::rule::rule(rule, output_format, open)?;
             }
             Ok(ExitStatus::Success)
         }
